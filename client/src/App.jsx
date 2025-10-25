@@ -2,8 +2,8 @@ import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import DashboardWrapper from "./pages/DashboardWrapper";
 import StudentList from "./pages/StudentList";
-import Profile from "./Profile";
 import { StudentProvider } from "./context/StudentProvider";
+import Profile from "./pages/Profile";
 
 function App() {
   return (

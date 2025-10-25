@@ -1,22 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { useStudents } from "../context/StudentContext"; // Import Context
+import { useStudents } from "../context/StudentContext";
 
 const StudentFormModal = ({ isOpen, onClose, editingStudent }) => {
   const { addStudent, updateStudent } = useStudents();
 
-  // Khởi tạo State cho Form
   const [formData, setFormData] = useState({
     name: "",
     student_id: "",
     major: "",
     email: "",
     phone_number: "",
-    status: "Active", // Mặc định là Active
+    status: "Active",
     gpa: 0.0,
   });
 
-  // Thiết lập lại Form Data khi component nhận editingStudent mới (cho chức năng Sửa)
   useEffect(() => {
     if (editingStudent) {
       setFormData({
@@ -29,7 +27,6 @@ const StudentFormModal = ({ isOpen, onClose, editingStudent }) => {
         gpa: editingStudent.gpa || 0.0,
       });
     } else {
-      // Reset form khi Thêm mới
       setFormData({
         name: "",
         student_id: "",
@@ -53,22 +50,18 @@ const StudentFormModal = ({ isOpen, onClose, editingStudent }) => {
     e.preventDefault();
 
     if (editingStudent) {
-      // CHỨC NĂNG SỬA: Gộp ID và gọi update
       updateStudent({ ...editingStudent, ...formData });
     } else {
-      // CHỨC NĂNG THÊM: Gọi add
       addStudent(formData);
     }
 
-    onClose(); // Đóng Modal sau khi submit
+    onClose();
   };
 
   const isEditMode = !!editingStudent;
 
   return (
-    // Backdrop
     <div className="fixed inset-0 z-50 bg-gray-900 bg-opacity-70 flex items-center justify-center transition-opacity duration-300">
-      {/* Modal Content */}
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 m-4 transform transition-transform duration-300 scale-100">
         {/* Header */}
         <div className="flex justify-between items-center border-b pb-3 mb-4">

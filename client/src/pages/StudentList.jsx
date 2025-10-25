@@ -5,38 +5,21 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { useStudents } from "../context/StudentContext"; // SỬ DỤNG CONTEXT
+import { useStudents } from "../context/StudentContext";
 import StudentFormModal from "./StudentFormModal";
-import ConfirmationModal from "./ConfirmationModal"; // Cần tạo thêm Modal xác nhận
-
-// Component phụ StatusBadge (giữ nguyên)
-const StatusBadge = ({ status }) => {
-  let color = "";
-  if (status === "Active") {
-    color = "bg-green-100 text-green-800 border-green-300";
-  } else if (status === "Inactive") {
-    color = "bg-red-100 text-red-800 border-red-300";
-  } else {
-    color = "bg-yellow-100 text-yellow-800 border-yellow-300";
-  }
-  return (
-    <span
-      className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${color}`}
-    >
-      {status}
-    </span>
-  );
-};
+import ConfirmationModal from "./ConfirmationModal";
+import StudentDetailModal from "./StudentDetailModal";
+import StatusBadge from "../components/StatusBadge";
 
 const StudentList = () => {
-  // Lấy state và hàm xử lý từ Context
   const { students, deleteStudent, getStudentById } = useStudents();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState(null); // Lưu trữ SV đang sửa
+  const [editingStudent, setEditingStudent] = useState(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
+  const [viewingStudent, setViewingStudent] = useState(null);
 
   // --- HÀM XỬ LÝ UI VÀ CRUD ---
 
@@ -69,11 +52,10 @@ const StudentList = () => {
     setStudentToDelete(null);
   };
 
-  // Hàm Xem chi tiết (Chỉ là alert đơn giản cho mục đích này)
-  const handleViewDetails = (student) => {
-    alert(
-      `Chi tiết Sinh viên:\n- ID: ${student.student_id}\n- Chuyên ngành: ${student.major}\n- Email: ${student.email}`
-    );
+  // Mở Modal Xem Chi tiết
+  const handleViewDetails = (studentId) => {
+    const student = getStudentById(studentId);
+    setViewingStudent(student);
   };
 
   // Lọc dữ liệu
@@ -82,6 +64,15 @@ const StudentList = () => {
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.student_id.includes(searchTerm)
   );
+
+  // Hàm đóng Modal chi tiết
+  const closeDetailModal = () => setViewingStudent(null);
+
+  // Hàm đóng Modal Thêm/Sửa
+  const closeFormModal = () => {
+    setIsModalOpen(false);
+    setEditingStudent(null);
+  };
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -135,10 +126,13 @@ const StudentList = () => {
             {filteredStudents.map((student) => (
               <tr
                 key={student.id}
-                className="hover:bg-blue-50 transition-colors duration-150"
+                className="hover:bg-blue-50 transition-colors duration-150 cursor-pointer"
               >
                 {/* Tên */}
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td
+                  className="px-6 py-4 whitespace-nowrap"
+                  onClick={() => handleViewDetails(student.id)}
+                >
                   <div className="text-sm font-semibold text-gray-900">
                     {student.name}
                   </div>
@@ -148,7 +142,10 @@ const StudentList = () => {
                 </td>
 
                 {/* Mã SV / Chuyên ngành */}
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td
+                  className="px-6 py-4 whitespace-nowrap"
+                  onClick={() => handleViewDetails(student.id)}
+                >
                   <div className="text-sm text-gray-700 font-medium">
                     {student.student_id}
                   </div>
@@ -166,27 +163,27 @@ const StudentList = () => {
                         ? "#3B82F6"
                         : "#F59E0B",
                   }}
+                  onClick={() => handleViewDetails(student.id)}
                 >
                   {student.gpa.toFixed(2)}
                 </td>
 
-                {/* Trạng thái */}
-                <td className="px-6 py-4 whitespace-nowrap">
+                <td
+                  className="px-6 py-4 whitespace-nowrap"
+                  onClick={() => handleViewDetails(student.id)}
+                >
                   <StatusBadge status={student.status} />
                 </td>
 
-                {/* Hành động */}
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex justify-end space-x-2">
-                    {/* Xem Chi tiết */}
                     <button
-                      onClick={() => handleViewDetails(student)}
+                      onClick={() => handleViewDetails(student.id)}
                       className="text-blue-600 hover:text-blue-900 p-2 rounded-full hover:bg-blue-100 transition-colors duration-150"
                       title="Xem chi tiết"
                     >
                       <EyeIcon className="h-5 w-5" />
                     </button>
-                    {/* Sửa */}
                     <button
                       onClick={() => handleEdit(student.id)}
                       className="text-yellow-600 hover:text-yellow-900 p-2 rounded-full hover:bg-yellow-100 transition-colors duration-150"
@@ -194,7 +191,6 @@ const StudentList = () => {
                     >
                       <PencilIcon className="h-5 w-5" />
                     </button>
-                    {/* Xóa */}
                     <button
                       onClick={() => handleDeleteConfirm(student.id)}
                       className="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-red-100 transition-colors duration-150"
@@ -209,7 +205,6 @@ const StudentList = () => {
           </tbody>
         </table>
 
-        {/* Trường hợp không có dữ liệu */}
         {filteredStudents.length === 0 && (
           <div className="text-center py-10 text-gray-500 bg-white">
             Không tìm thấy sinh viên nào phù hợp với tìm kiếm.
@@ -217,14 +212,14 @@ const StudentList = () => {
         )}
       </div>
 
-      {/* MODAL THÊM/SỬA */}
       <StudentFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeFormModal}
         editingStudent={editingStudent}
       />
 
-      {/* MODAL XÁC NHẬN XÓA */}
+      <StudentDetailModal student={viewingStudent} onClose={closeDetailModal} />
+
       <ConfirmationModal
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}

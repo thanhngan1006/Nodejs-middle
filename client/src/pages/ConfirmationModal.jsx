@@ -5,9 +5,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
   if (!isOpen) return null;
 
   return (
-    // Backdrop
     <div className="fixed inset-0 z-50 bg-gray-900 bg-opacity-70 flex items-center justify-center transition-opacity duration-300">
-      {/* Modal Content */}
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 m-4 transform transition-transform duration-300 scale-100">
         {/* Icon cảnh báo */}
         <div className="flex justify-center mb-4">

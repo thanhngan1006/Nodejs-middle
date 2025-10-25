@@ -9,9 +9,12 @@ import {
   BriefcaseIcon,
   BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
-import { mockAdvisor } from "./mock_data/mockAdvisor";
+import UserFormModal from "../components/UserFormModal";
+import { useState } from "react";
+import { mockAdvisor } from "../mock_data/mockAdvisor";
 
 const currentUserDetail = mockAdvisor;
+// const currentUserDetail = mockStudent;
 
 const InfoBlock = ({
   label,
@@ -27,7 +30,7 @@ const InfoBlock = ({
     <div className="flex-shrink-0 mt-1">
       <IconComponent className={`h-6 w-6 ${iconColor}`} />
     </div>
-    <div className="flex flex-col">
+    <div className="flex flex-col min-w-0">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
         {label}
       </p>
@@ -39,8 +42,17 @@ const InfoBlock = ({
 );
 
 const Profile = () => {
-  const userDetail = currentUserDetail;
-  const role = userDetail?.role; // Sử dụng optional chaining để tránh lỗi nếu userDetail là null
+  const [userDetail, setUserDetail] = useState(currentUserDetail);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const role = userDetail?.role;
+
+  const handleUpdateProfile = (updatedData) => {
+    setUserDetail(updatedData);
+
+    setIsModalOpen(false);
+
+    console.log("Profile updated successfully:", updatedData);
+  };
 
   if (!userDetail || !role) {
     return (
@@ -60,7 +72,7 @@ const Profile = () => {
   let title = "Thông tin cá nhân";
   let roleDisplay = "";
   let infoBlocks = [];
-  let iconColorClass = "text-blue-600"; // Mặc định cho student
+  let iconColorClass = "text-blue-600";
 
   // ----------------------------------------------------
   // LOGIC XỬ LÝ THEO VAI TRÒ
@@ -93,22 +105,22 @@ const Profile = () => {
     ];
   } else if (role === "advisor") {
     roleDisplay = "Cố vấn / Giảng viên";
-    iconColorClass = "text-indigo-600"; // Màu sắc khác cho advisor
+    iconColorClass = "text-indigo-600";
 
     infoBlocks = [
-      { label: "Vai trò", value: roleDisplay, icon: BriefcaseIcon }, // Icon khác cho advisor
+      { label: "Vai trò", value: roleDisplay, icon: BriefcaseIcon },
       { label: "Họ và tên", value: userDetail.name, icon: UserIcon },
       {
         label: "ADVISOR ID",
         value: userDetail.advisor_id,
         icon: IdentificationIcon,
       },
-      { label: "Chức vụ", value: userDetail.position, icon: AcademicCapIcon }, // Icon chức vụ
+      { label: "Chức vụ", value: userDetail.position, icon: AcademicCapIcon },
       {
         label: "Phòng ban",
         value: userDetail.department,
         icon: BuildingOfficeIcon,
-      }, // Icon phòng ban
+      },
       {
         label: "Ngày sinh",
         value: new Date(userDetail.date_of_birth).toLocaleDateString("vi-VN"),
@@ -158,11 +170,10 @@ const Profile = () => {
           </p>
         </div>
 
-        {/* Grid thông tin */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 text-gray-800">
           {infoBlocks.map((block, index) => (
             <InfoBlock
-              key={block.label} // Dùng label làm key nếu chắc chắn duy nhất, hoặc một ID từ data
+              key={block.label}
               label={block.label}
               value={block.value}
               icon={block.icon}
@@ -174,6 +185,7 @@ const Profile = () => {
         {/* Footer (Chức năng chỉnh sửa) */}
         <div className="mt-12 text-center">
           <button
+            onClick={() => setIsModalOpen(true)}
             className="bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-full 
                              shadow-lg hover:shadow-xl transition-all duration-200 ease-in-out 
                              focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-75"
@@ -181,6 +193,14 @@ const Profile = () => {
             Chỉnh sửa thông tin
           </button>
         </div>
+
+        <UserFormModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          userDetail={userDetail}
+          role={role}
+          onSave={handleUpdateProfile}
+        />
       </div>
     </div>
   );
