@@ -4,22 +4,51 @@ import {
   EyeIcon,
   PencilIcon,
   TrashIcon,
+  AcademicCapIcon, // Icon cho Bảng điểm
 } from "@heroicons/react/24/outline";
-import { useStudents } from "../context/StudentContext";
+import { useStudents } from "../context/StudentContext"; // SỬ DỤNG CONTEXT
 import StudentFormModal from "./StudentFormModal";
 import ConfirmationModal from "./ConfirmationModal";
-import StudentDetailModal from "./StudentDetailModal";
-import StatusBadge from "../components/StatusBadge";
+import StudentViewModal from "./StudentViewModal";
+import GradebookModal from "./GradebookModal"; // Import Modal Bảng điểm
+
+// Component phụ StatusBadge (giữ nguyên)
+const StatusBadge = ({ status }) => {
+  let color = "";
+  if (status === "Active") {
+    color = "bg-green-100 text-green-800 border-green-300";
+  } else if (status === "Inactive") {
+    color = "bg-red-100 text-red-800 border-red-300";
+  } else {
+    // Mặc định cho "Graduated"
+    color = "bg-yellow-100 text-yellow-800 border-yellow-300";
+  }
+  return (
+    <span
+      className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full border ${color}`}
+    >
+      {status}
+    </span>
+  );
+};
 
 const StudentList = () => {
-  const { students, deleteStudent, getStudentById } = useStudents();
-
+  // Lấy state và hàm xử lý từ Context (thêm 'fetchStudents')
+  const { students, deleteStudent, getStudentById, loading, fetchStudents } = useStudents();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // State cho các modal
+  const [isModalOpen, setIsModalOpen] = useState(false); // Modal Thêm/Sửa
   const [editingStudent, setEditingStudent] = useState(null);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false); // Modal Xác nhận Xóa
   const [studentToDelete, setStudentToDelete] = useState(null);
-  const [viewingStudent, setViewingStudent] = useState(null);
+
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false); // Modal Xem chi tiết
+  const [studentToView, setStudentToView] = useState(null);
+
+  const [isGradeModalOpen, setIsGradeModalOpen] = useState(false); // Modal Bảng điểm
+  const [studentForGrades, setStudentForGrades] = useState(null);
+
 
   // --- HÀM XỬ LÝ UI VÀ CRUD ---
 
@@ -31,7 +60,7 @@ const StudentList = () => {
 
   // Mở Modal Sửa
   const handleEdit = (studentId) => {
-    const student = getStudentById(studentId);
+    const student = getStudentById(studentId); // 'id' là '_id' đã được map
     setEditingStudent(student);
     setIsModalOpen(true);
   };
@@ -46,33 +75,36 @@ const StudentList = () => {
   // Thực hiện Xóa
   const handleDelete = () => {
     if (studentToDelete) {
-      deleteStudent(studentToDelete.id);
+      deleteStudent(studentToDelete.id); // 'id' là '_id'
     }
     setIsConfirmOpen(false);
     setStudentToDelete(null);
   };
 
-  // Mở Modal Xem Chi tiết
-  const handleViewDetails = (studentId) => {
-    const student = getStudentById(studentId);
-    setViewingStudent(student);
+  // Mở Modal Xem chi tiết
+  const handleViewDetails = (student) => {
+    setStudentToView(student);
+    setIsViewModalOpen(true);
   };
 
-  // Lọc dữ liệu
+  // Mở Modal Bảng điểm
+  const handleOpenGrades = (student) => {
+    setStudentForGrades(student);
+    setIsGradeModalOpen(true);
+  };
+
+  // Đóng Modal Bảng điểm (và làm mới danh sách)
+  const handleCloseGrades = () => {
+    setIsGradeModalOpen(false);
+    fetchStudents(); // Tải lại danh sách để cập nhật GPA mới
+  };
+
+  // Lọc dữ liệu (dùng camelCase)
   const filteredStudents = students.filter(
     (student) =>
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.student_id.includes(searchTerm)
+      student.studentId.includes(searchTerm) // Tìm theo studentId
   );
-
-  // Hàm đóng Modal chi tiết
-  const closeDetailModal = () => setViewingStudent(null);
-
-  // Hàm đóng Modal Thêm/Sửa
-  const closeFormModal = () => {
-    setIsModalOpen(false);
-    setEditingStudent(null);
-  };
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -106,7 +138,6 @@ const StudentList = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-blue-50">
             <tr>
-              {/* Cập nhật style header để đẹp hơn */}
               {["Họ và Tên", "Mã SV / Chuyên ngành", "GPA", "Trạng thái"].map(
                 (header) => (
                   <th
@@ -123,103 +154,115 @@ const StudentList = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
-            {filteredStudents.map((student) => (
-              <tr
-                key={student.id}
-                className="hover:bg-blue-50 transition-colors duration-150 cursor-pointer"
-              >
-                {/* Tên */}
-                <td
-                  className="px-6 py-4 whitespace-nowrap"
-                  onClick={() => handleViewDetails(student.id)}
-                >
-                  <div className="text-sm font-semibold text-gray-900">
-                    {student.name}
-                  </div>
-                  <div className="text-xs text-blue-600 mt-1">
-                    {student.email}
-                  </div>
-                </td>
-
-                {/* Mã SV / Chuyên ngành */}
-                <td
-                  className="px-6 py-4 whitespace-nowrap"
-                  onClick={() => handleViewDetails(student.id)}
-                >
-                  <div className="text-sm text-gray-700 font-medium">
-                    {student.student_id}
-                  </div>
-                  <div className="text-xs text-gray-500">{student.major}</div>
-                </td>
-
-                {/* GPA */}
-                <td
-                  className="px-6 py-4 whitespace-nowrap text-sm font-extrabold"
-                  style={{
-                    color:
-                      student.gpa >= 3.5
-                        ? "#10B981"
-                        : student.gpa >= 3.0
-                        ? "#3B82F6"
-                        : "#F59E0B",
-                  }}
-                  onClick={() => handleViewDetails(student.id)}
-                >
-                  {student.gpa.toFixed(2)}
-                </td>
-
-                <td
-                  className="px-6 py-4 whitespace-nowrap"
-                  onClick={() => handleViewDetails(student.id)}
-                >
-                  <StatusBadge status={student.status} />
-                </td>
-
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex justify-end space-x-2">
-                    <button
-                      onClick={() => handleViewDetails(student.id)}
-                      className="text-blue-600 hover:text-blue-900 p-2 rounded-full hover:bg-blue-100 transition-colors duration-150"
-                      title="Xem chi tiết"
-                    >
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleEdit(student.id)}
-                      className="text-yellow-600 hover:text-yellow-900 p-2 rounded-full hover:bg-yellow-100 transition-colors duration-150"
-                      title="Sửa"
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteConfirm(student.id)}
-                      className="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-red-100 transition-colors duration-150"
-                      title="Xóa"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
+            {/* Xử lý loading */}
+            {loading ? (
+              <tr>
+                <td colSpan="5" className="text-center py-10 text-gray-500">
+                  Đang tải danh sách sinh viên...
                 </td>
               </tr>
-            ))}
+            ) : filteredStudents.length === 0 ? (
+              // Xử lý không có dữ liệu
+              <tr>
+                <td colSpan="5" className="text-center py-10 text-gray-500">
+                  Không tìm thấy sinh viên nào.
+                </td>
+              </tr>
+            ) : (
+              // Hiển thị dữ liệu
+              filteredStudents.map((student) => (
+                <tr
+                  key={student.id} // 'id' là '_id' đã được map
+                  className="hover:bg-blue-50 transition-colors duration-150"
+                >
+                  {/* Tên & Email */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-semibold text-gray-900">
+                      {student.name}
+                    </div>
+                    <div className="text-xs text-blue-600 mt-1">
+                      {student.user?.email || "N/A"}
+                    </div>
+                  </td>
+
+                  {/* Mã SV / Chuyên ngành */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-700 font-medium">
+                      {student.studentId} {/* Dùng camelCase */}
+                    </div>
+                    <div className="text-xs text-gray-500">{student.major}</div>
+                  </td>
+
+                  {/* GPA */}
+                  <td
+                    className="px-6 py-4 whitespace-nowrap text-sm font-extrabold"
+                    style={{
+                      color:
+                        student.gpa >= 3.5 ? "#10B981" // Xanh lá
+                          : student.gpa >= 2.5 ? "#3B82F6" // Xanh dương
+                            : "#F59E0B", // Vàng (Dưới 2.5)
+                    }}
+                  >
+                    {student.gpa.toFixed(2)}
+                  </td>
+
+                  {/* Trạng thái */}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <StatusBadge status={student.status} />
+                  </td>
+
+                  {/* Hành động */}
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end space-x-1">
+                      {/* Bảng điểm */}
+                      <button
+                        onClick={() => handleOpenGrades(student)}
+                        className="text-green-600 hover:text-green-900 p-2 rounded-full hover:bg-green-100 transition-colors duration-150"
+                        title="Bảng điểm"
+                      >
+                        <AcademicCapIcon className="h-5 w-5" />
+                      </button>
+                      {/* Xem Chi tiết */}
+                      <button
+                        onClick={() => handleViewDetails(student)}
+                        className="text-blue-600 hover:text-blue-900 p-2 rounded-full hover:bg-blue-100 transition-colors duration-150"
+                        title="Xem chi tiết"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                      {/* Sửa */}
+                      <button
+                        onClick={() => handleEdit(student.id)}
+                        className="text-yellow-600 hover:text-yellow-900 p-2 rounded-full hover:bg-yellow-100 transition-colors duration-150"
+                        title="Sửa"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                      {/* Xóa */}
+                      <button
+                        onClick={() => handleDeleteConfirm(student.id)}
+                        className="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-red-100 transition-colors duration-150"
+                        title="Xóa"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
-
-        {filteredStudents.length === 0 && (
-          <div className="text-center py-10 text-gray-500 bg-white">
-            Không tìm thấy sinh viên nào phù hợp với tìm kiếm.
-          </div>
-        )}
       </div>
 
+      {/* MODAL THÊM/SỬA */}
       <StudentFormModal
         isOpen={isModalOpen}
-        onClose={closeFormModal}
+        onClose={() => setIsModalOpen(false)}
         editingStudent={editingStudent}
       />
 
-      <StudentDetailModal student={viewingStudent} onClose={closeDetailModal} />
-
+      {/* MODAL XÁC NHẬN XÓA */}
       <ConfirmationModal
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
@@ -227,9 +270,23 @@ const StudentList = () => {
         title="Xác nhận Xóa Sinh viên"
         message={
           studentToDelete
-            ? `Bạn có chắc chắn muốn xóa sinh viên ${studentToDelete.name} (${studentToDelete.student_id}) không? Hành động này không thể hoàn tác.`
+            ? `Bạn có chắc chắn muốn xóa sinh viên ${studentToDelete.name} (${studentToDelete.studentId}) không? Hành động này không thể hoàn tác.`
             : "Bạn có chắc chắn muốn thực hiện hành động này không?"
         }
+      />
+
+      {/* MODAL XEM CHI TIẾT */}
+      <StudentViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        student={studentToView}
+      />
+
+      {/* MODAL BẢNG ĐIỂM */}
+      <GradebookModal
+        isOpen={isGradeModalOpen}
+        onClose={handleCloseGrades} // Dùng hàm đóng có làm mới
+        student={studentForGrades}
       />
     </div>
   );

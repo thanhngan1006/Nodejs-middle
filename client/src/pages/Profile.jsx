@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import {
   UserIcon,
   IdentificationIcon,
@@ -8,14 +9,13 @@ import {
   AcademicCapIcon,
   BriefcaseIcon,
   BuildingOfficeIcon,
+  StarIcon, // Icon cho GPA
 } from "@heroicons/react/24/outline";
-import UserFormModal from "../components/UserFormModal";
-import { useState } from "react";
-import { mockAdvisor } from "../mock_data/mockAdvisor";
+import { useAuth } from "../context/AuthContext"; // Import AuthContext
+import api from "../api/api"; // Import file api
+import ProfileEditModal from "./ProfileEditModal"; // Import Modal chỉnh sửa
 
-const currentUserDetail = mockAdvisor;
-// const currentUserDetail = mockStudent;
-
+// Component InfoBlock (Không thay đổi)
 const InfoBlock = ({
   label,
   value,
@@ -30,31 +30,68 @@ const InfoBlock = ({
     <div className="flex-shrink-0 mt-1">
       <IconComponent className={`h-6 w-6 ${iconColor}`} />
     </div>
-    <div className="flex flex-col min-w-0">
+    <div className="flex flex-col">
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
         {label}
       </p>
       <div className="text-base font-bold text-gray-800 break-words leading-tight mt-0.5">
-        {value}
+        {value || "N/A"} {/* Hiển thị N/A nếu giá trị rỗng */}
       </div>
     </div>
   </div>
 );
 
+// --- Component Profile chính (Đã cập nhật) ---
 const Profile = () => {
-  const [userDetail, setUserDetail] = useState(currentUserDetail);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const role = userDetail?.role;
+  const { userRole } = useAuth(); // Lấy vai trò từ Context
+  const [userDetail, setUserDetail] = useState(null); // State cho dữ liệu API
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // State để quản lý Modal chỉnh sửa
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const handleUpdateProfile = (updatedData) => {
-    setUserDetail(updatedData);
-
-    setIsModalOpen(false);
-
-    console.log("Profile updated successfully:", updatedData);
+  // Hàm gọi API để lấy thông tin profile
+  const fetchProfile = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let response;
+      if (userRole === "teacher") {
+        response = await api.get("/teacher-profile");
+      } else if (userRole === "student") {
+        response = await api.get("/profile");
+      } else {
+        throw new Error("Vai trò không hợp lệ.");
+      }
+      setUserDetail(response.data);
+    } catch (err) {
+      setError(err.message || "Không thể tải thông tin cá nhân.");
+    }
+    setLoading(false);
   };
 
-  if (!userDetail || !role) {
+  // Chạy hàm fetchProfile khi component mount (hoặc khi userRole thay đổi)
+  useEffect(() => {
+    fetchProfile();
+  }, [userRole]);
+
+  // Hàm callback được gọi từ Modal sau khi cập nhật thành công
+  const handleProfileUpdate = (updatedProfileData) => {
+    setUserDetail(updatedProfileData); // Cập nhật state với dữ liệu mới
+    setIsEditModalOpen(false); // Đóng modal
+  };
+
+  // --- Xử lý trạng thái Loading và Error ---
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <p>Đang tải thông tin cá nhân...</p>
+      </div>
+    );
+  }
+
+  if (error || !userDetail) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="p-8 bg-white rounded-xl shadow-lg border-l-4 border-red-500">
@@ -62,93 +99,57 @@ const Profile = () => {
             Lỗi tải thông tin
           </h3>
           <p className="text-gray-700">
-            Không tìm thấy thông tin người dùng hoặc vai trò không hợp lệ.
+            {error || "Không tìm thấy thông tin người dùng."}
           </p>
         </div>
       </div>
     );
   }
 
+  // --- Xử lý logic hiển thị (Dùng dữ liệu API) ---
   let title = "Thông tin cá nhân";
   let roleDisplay = "";
   let infoBlocks = [];
   let iconColorClass = "text-blue-600";
+  const userEmail = userDetail.user?.email; // Email nằm trong object user lồng nhau
 
-  // ----------------------------------------------------
-  // LOGIC XỬ LÝ THEO VAI TRÒ
-  // ----------------------------------------------------
+  // Hàm helper format ngày
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("vi-VN");
+  };
 
-  if (role === "student") {
+  if (userRole === "student") {
     roleDisplay = "Học sinh";
     iconColorClass = "text-blue-600";
-
-    const phoneNumber = userDetail.phone_number?.startsWith("0")
-      ? userDetail.phone_number
-      : "0" + userDetail.phone_number;
-
     infoBlocks = [
       { label: "Vai trò", value: roleDisplay, icon: AcademicCapIcon },
       { label: "Họ và tên", value: userDetail.name, icon: UserIcon },
-      {
-        label: "STUDENT ID",
-        value: userDetail.student_id,
-        icon: IdentificationIcon,
-      },
-      {
-        label: "Ngày sinh",
-        value: new Date(userDetail.date_of_birth).toLocaleDateString("vi-VN"),
-        icon: CalendarIcon,
-      },
-      { label: "Email", value: userDetail.email, icon: AtSymbolIcon },
-      { label: "SĐT cá nhân", value: phoneNumber, icon: PhoneIcon },
+      { label: "STUDENT ID", value: userDetail.studentId, icon: IdentificationIcon },
+      { label: "Chuyên ngành", value: userDetail.major, icon: BriefcaseIcon },
+      { label: "Email", value: userEmail, icon: AtSymbolIcon },
+      { label: "Điểm GPA", value: userDetail.gpa?.toFixed(2) || "0.00", icon: StarIcon },
+      { label: "Ngày sinh", value: formatDate(userDetail.dateOfBirth), icon: CalendarIcon },
+      { label: "SĐT cá nhân", value: userDetail.phoneNumber, icon: PhoneIcon },
       { label: "Địa chỉ", value: userDetail.address, icon: MapPinIcon },
     ];
-  } else if (role === "advisor") {
+  } else if (userRole === "teacher") {
     roleDisplay = "Cố vấn / Giảng viên";
     iconColorClass = "text-indigo-600";
-
     infoBlocks = [
       { label: "Vai trò", value: roleDisplay, icon: BriefcaseIcon },
       { label: "Họ và tên", value: userDetail.name, icon: UserIcon },
-      {
-        label: "ADVISOR ID",
-        value: userDetail.advisor_id,
-        icon: IdentificationIcon,
-      },
+      { label: "EMPLOYEE ID", value: userDetail.employeeId, icon: IdentificationIcon },
       { label: "Chức vụ", value: userDetail.position, icon: AcademicCapIcon },
-      {
-        label: "Phòng ban",
-        value: userDetail.department,
-        icon: BuildingOfficeIcon,
-      },
-      {
-        label: "Ngày sinh",
-        value: new Date(userDetail.date_of_birth).toLocaleDateString("vi-VN"),
-        icon: CalendarIcon,
-      },
-      { label: "Email", value: userDetail.email, icon: AtSymbolIcon },
-      { label: "SĐT cá nhân", value: userDetail.phone_number, icon: PhoneIcon },
+      { label: "Phòng ban", value: userDetail.department, icon: BuildingOfficeIcon },
+      { label: "Email", value: userEmail, icon: AtSymbolIcon },
+      { label: "Ngày sinh", value: formatDate(userDetail.dateOfBirth), icon: CalendarIcon },
+      { label: "SĐT cá nhân", value: userDetail.phoneNumber, icon: PhoneIcon },
       { label: "Địa chỉ", value: userDetail.address, icon: MapPinIcon },
     ];
-  } else {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="p-8 bg-white rounded-xl shadow-lg border-l-4 border-red-500">
-          <h3 className="text-2xl font-semibold text-red-600 mb-2">
-            Lỗi: Vai trò không được hỗ trợ
-          </h3>
-          <p className="text-gray-700">
-            Vai trò <span className="font-bold">"{role}"</span> chưa được cấu
-            hình hiển thị.
-          </p>
-        </div>
-      </div>
-    );
   }
 
-  // ----------------------------------------------------
-  // GIAO DIỆN CHUNG (Tái sử dụng)
-  // ----------------------------------------------------
+  // --- Giao diện chung ---
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8 flex justify-center items-center font-sans">
       <div
@@ -157,8 +158,6 @@ const Profile = () => {
       >
         {/* Header */}
         <div className="flex flex-col items-center mb-10 pb-6 border-b border-gray-200">
-          {/* Avatar (Ví dụ, nếu có) */}
-          {/* <img src="https://via.placeholder.com/100" alt="Avatar" className="w-24 h-24 rounded-full border-4 border-blue-300 mb-4 shadow-md" /> */}
           <h2 className="text-4xl font-extrabold text-gray-900 leading-tight mb-2">
             {title}
           </h2>
@@ -170,8 +169,9 @@ const Profile = () => {
           </p>
         </div>
 
+        {/* Grid thông tin */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6 text-gray-800">
-          {infoBlocks.map((block, index) => (
+          {infoBlocks.map((block) => (
             <InfoBlock
               key={block.label}
               label={block.label}
@@ -185,7 +185,7 @@ const Profile = () => {
         {/* Footer (Chức năng chỉnh sửa) */}
         <div className="mt-12 text-center">
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => setIsEditModalOpen(true)} // Thêm onClick để mở Modal
             className="bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-8 rounded-full 
                              shadow-lg hover:shadow-xl transition-all duration-200 ease-in-out 
                              focus:outline-none focus:ring-4 focus:ring-blue-300 focus:ring-opacity-75"
@@ -193,15 +193,15 @@ const Profile = () => {
             Chỉnh sửa thông tin
           </button>
         </div>
-
-        <UserFormModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          userDetail={userDetail}
-          role={role}
-          onSave={handleUpdateProfile}
-        />
       </div>
+      
+      {/* Render Modal (Modal này bị ẩn) */}
+      <ProfileEditModal 
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        currentUser={userDetail} // Truyền dữ liệu hiện tại vào Modal
+        onUpdate={handleProfileUpdate} // Truyền hàm callback
+      />
     </div>
   );
 };

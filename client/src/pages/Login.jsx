@@ -1,14 +1,20 @@
+// client/src/pages/Login.jsx
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import login from "../assets/Login.jpg";
+import loginImg from "../assets/Login.jpg"; // Đổi tên 'login' thành 'loginImg' để tránh nhầm lẫn với hàm
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext"; // Import hook 'useAuth'
 
 const Login = () => {
-  const USER_URLs = import.meta.env.VITE_USER_SERVICE_URL;
+  // USER_URLs không còn cần thiết vì chúng ta dùng 'api.js'
+  // const USER_URLs = import.meta.env.VITE_USER_SERVICE_URL;
 
   const navigate = useNavigate();
+  const { login } = useAuth(); // Lấy hàm 'login' từ AuthContext
+
   const [formData, setFormData] = useState({
-    username: "",
+    email: "", // Đổi 'username' thành 'email' cho rõ ràng
     password: "",
   });
   const [error, setError] = useState("");
@@ -21,9 +27,26 @@ const Login = () => {
     });
   };
 
+  // --- HÀM SUBMIT ĐÃ ĐƯỢC CẬP NHẬT ---
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setError(""); // Xóa lỗi cũ
+
+    try {
+      // Gọi hàm login từ Context, truyền vào email và password
+      const success = await login(formData.email, formData.password);
+
+      if (success) {
+        navigate("/"); // Đăng nhập thành công, chuyển hướng về trang chủ (Dashboard)
+      } else {
+        // Hàm login trả về false (do lỗi 401, 404...)
+        setError("Email hoặc mật khẩu không chính xác.");
+      }
+    } catch (err) {
+      // Xử lý các lỗi khác (ví dụ: server sập)
+      setError("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
+      console.error(err);
+    }
   };
 
   return (
@@ -34,7 +57,7 @@ const Login = () => {
           <h2 className="text-blue-950">
             Đảm bảo tài khoản của bạn được an toàn
           </h2>
-          <img className="w-3/5" src={login} alt="anh login" />
+          <img className="w-3/5" src={loginImg} alt="anh login" />
         </div>
 
         <div className="flex-1 flex flex-col gap-4 items-center justify-center">
@@ -51,15 +74,16 @@ const Login = () => {
             <div className="w-full flex flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-blue-950 font-semibold">
-                  Tên đăng nhập
+                  Email
                 </label>
                 <input
-                  type="text"
-                  name="username"
-                  value={formData.username}
+                  type="email" // Đổi type thành 'email'
+                  name="email" // Đổi name thành 'email'
+                  value={formData.email}
                   onChange={handleChange}
-                  placeholder="Nhập tên đăng nhập"
+                  placeholder="Nhập email"
                   className="rounded-md p-2 w-full border border-gray-300"
+                  required
                 />
               </div>
               <div className="flex flex-col gap-1 relative itemc-">
@@ -71,6 +95,7 @@ const Login = () => {
                   onChange={handleChange}
                   placeholder="Nhập mật khẩu"
                   className="border border-gray-300 rounded-md p-2 w-full pr-10"
+                  required
                 />
 
                 <div
@@ -82,11 +107,12 @@ const Login = () => {
               </div>
             </div>
 
+            {/* Hiển thị lỗi nếu có */}
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
             <button
               type="button"
-              onClick={() => navigate("/resetPassword")}
+              onClick={() => navigate("/resetPassword")} // Giả sử bạn có route này
               className="flex justify-between items-start flex-col gap-4 mb-4"
             >
               <span className="text-blue-950 cursor-pointer">

@@ -1,0 +1,94 @@
+services:
+  # 1. NGINX (Load Balancer - Giữ nguyên vai trò)
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80" # Cổng vào chính
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - student-service # Đổi tên từ backend
+      - client
+      - grade-service
+    networks:
+      - student-net
+    # Bỏ 'deploy'
+
+  # 2. STUDENT-SERVICE (Backend 1)
+  student-service: # Đổi tên từ backend
+    build: ./student-service # Đổi đường dẫn
+    networks:
+      - student-net
+    depends_on:
+      - db
+      - rabbitmq
+    environment:
+      - DB_URL=mongodb://db:27017/studentdb
+      - JWT_SECRET=my_super_secret_key_123
+    # Bỏ 'deploy', nếu muốn scale thì dùng 'docker compose up --scale'
+
+  # 3. GRADE-SERVICE (Backend 2)
+  grade-service:
+    build: ./grade-service
+    networks:
+      - student-net
+    depends_on:
+      - db
+      - rabbitmq
+    environment:
+      - DB_URL=mongodb://db:27017/gradedb
+    restart: on-failure # Giữ lại restart
+    # Bỏ 'deploy'
+
+  # 4. CLIENT (Frontend - Development Mode)
+  client:
+    build: ./client
+    networks:
+      - student-net
+    # Thêm lại các dòng này cho development
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    # Bỏ 'deploy'
+
+  # 5. DB (MongoDB)
+  db:
+    image: mongo:latest
+    networks:
+      - student-net
+    volumes:
+      - mongo-data:/data/db # Giữ volume DB
+    ports: # (Tùy chọn) Mở lại cổng DB để debug nếu cần
+       - "27017:27017"
+    # Bỏ 'deploy'
+
+  # 6. RABBITMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672" # Giữ cổng quản lý
+      - "5672:5672"   # Giữ cổng giao tiếp
+    networks:
+      - student-net
+    # Bỏ 'deploy'
+
+  # 7. NOTIFICATION-SERVICE
+  notification-service:
+    build: ./notification-service
+    networks:
+      - student-net
+    depends_on:
+      - rabbitmq
+    env_file:
+      - ./notification-service/.env
+    restart: on-failure # Giữ lại restart
+    # Bỏ 'deploy'
+
+networks:
+  student-net:
+    driver: bridge # <-- QUAY LẠI bridge
+
+volumes:
+  mongo-data: # Giữ volume DB
