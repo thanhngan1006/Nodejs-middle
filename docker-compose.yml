@@ -1,22 +1,30 @@
+# docker-compose.yml (Swarm Version - Level 3)
+
 services:
-  # 1. NGINX (Load Balancer - Giữ nguyên vai trò)
+  # 1. NGINX (API Gateway)
   nginx:
-    image: nginx:latest
+    image: nginx:latest # Sử dụng image build sẵn
     ports:
-      - "80:80" # Cổng vào chính
+      # Chỉ cổng này được mở ra máy thật
+      - "80:80" 
     volumes:
+      # Map file config vào container
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - student-service # Đổi tên từ backend
+    depends_on: # Chỉ định thứ tự khởi động (Swarm có thể không tuân thủ nghiêm ngặt)
+      - student-service
       - client
       - grade-service
     networks:
       - student-net
-    # Bỏ 'deploy'
+    deploy: # Cấu hình cho Swarm
+      replicas: 1 # Chạy 1 bản sao Nginx
 
   # 2. STUDENT-SERVICE (Backend 1)
-  student-service: # Đổi tên từ backend
-    build: ./student-service # Đổi đường dẫn
+  student-service:
+    # Image sẽ được build thủ công hoặc từ registry
+    # Tên image thường là: <tên_thư_mục_gốc>-<tên_service>:latest
+    image: student-management-student-service:latest 
+    build: ./student-service # Giữ lại build context để build thủ công
     networks:
       - student-net
     depends_on:
@@ -24,11 +32,13 @@ services:
       - rabbitmq
     environment:
       - DB_URL=mongodb://db:27017/studentdb
-      - JWT_SECRET=my_super_secret_key_123
-    # Bỏ 'deploy', nếu muốn scale thì dùng 'docker compose up --scale'
+      - JWT_SECRET=my_super_secret_key_123 # Nên dùng secret của Swarm
+    deploy:
+      replicas: 2 # Chạy 2 bản sao
 
   # 3. GRADE-SERVICE (Backend 2)
   grade-service:
+    image: student-management-grade-service:latest
     build: ./grade-service
     networks:
       - student-net
@@ -37,58 +47,63 @@ services:
       - rabbitmq
     environment:
       - DB_URL=mongodb://db:27017/gradedb
-    restart: on-failure # Giữ lại restart
-    # Bỏ 'deploy'
+    deploy:
+      replicas: 1 # Chạy 1 bản sao
+      restart_policy: # Tự khởi động lại nếu lỗi
+        condition: on-failure
 
-  # 4. CLIENT (Frontend - Development Mode)
+  # 4. CLIENT (Frontend - Production Nginx)
   client:
-    build: ./client
+    image: student-management-client:latest
+    build: ./client # Sẽ dùng Dockerfile production mới
     networks:
       - student-net
-    # Thêm lại các dòng này cho development
-    stdin_open: true
-    tty: true
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-    # Bỏ 'deploy'
+    # Xóa bỏ: ports, stdin_open, tty, volumes
+    deploy:
+      replicas: 1
 
   # 5. DB (MongoDB)
   db:
-    image: mongo:latest
+    image: mongo:latest # Image build sẵn
     networks:
       - student-net
     volumes:
-      - mongo-data:/data/db # Giữ volume DB
-    ports: # (Tùy chọn) Mở lại cổng DB để debug nếu cần
-       - "27017:27017"
-    # Bỏ 'deploy'
+      - mongo-data:/data/db # Giữ volume data
+    deploy:
+      replicas: 1
+      # Có thể thêm placement constraint để DB luôn chạy trên 1 node cụ thể
 
   # 6. RABBITMQ
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3-management # Image build sẵn
     ports:
       - "15672:15672" # Giữ cổng quản lý
-      - "5672:5672"   # Giữ cổng giao tiếp
     networks:
       - student-net
-    # Bỏ 'deploy'
+    deploy:
+      replicas: 1
 
   # 7. NOTIFICATION-SERVICE
   notification-service:
+    image: student-management-notification-service:latest
     build: ./notification-service
     networks:
       - student-net
     depends_on:
       - rabbitmq
-    env_file:
+    env_file: # Vẫn đọc file .env
       - ./notification-service/.env
-    restart: on-failure # Giữ lại restart
-    # Bỏ 'deploy'
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
 
+# Định nghĩa mạng overlay cho Swarm
 networks:
   student-net:
-    driver: bridge # <-- QUAY LẠI bridge
+    driver: overlay # Phải là overlay
+    attachable: true # Cho phép kết nối tạm thời để debug
 
+# Định nghĩa volume cho MongoDB
 volumes:
-  mongo-data: # Giữ volume DB
+  mongo-data:
