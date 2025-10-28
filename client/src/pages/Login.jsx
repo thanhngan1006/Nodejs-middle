@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import loginImg from "../assets/Login.jpg"; // Đổi tên 'login' thành 'loginImg' để tránh nhầm lẫn với hàm
+import loginImg from "../assets/login.jpg"; // Đổi tên 'login' thành 'loginImg' để tránh nhầm lẫn với hàm
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext"; // Import hook 'useAuth'
 
