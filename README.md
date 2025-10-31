@@ -71,8 +71,6 @@
 
 ## ⚙️ Biến môi trường (chỉ cho `notification-service`)
 
-Chỉ sử dụng **một** file `.env.example` đặt **cùng cấp với `.env` trong `notification-service/`**.
-
 **`notification-service/.env.example`**
 ```env
 # Mẫu tệp biến môi trường cho dịch vụ thông báo
@@ -81,6 +79,7 @@ EMAIL_USER=youremail@gmail.com
 # Mật khẩu ứng dụng 16 chữ số
 EMAIL_PASS=pass_your_16_char_app_password
 ```
+*Nếu dùng Gmail: vào Google Account → Security → 2-Step Verification → App Passwords để tạo mật khẩu 16 ký tự, rồi dán vào EMAIL_PASS*
 ### Cách dùng
 ```cmd
 cp notification-service/.env.example notification-service/.env
@@ -104,6 +103,7 @@ docker compose build
 # deploy stack
 docker stack deploy -c docker-compose.yml student_app
 ```
+# mở http://localhost/
 ### 3. Tắt toàn bộ stack
 ```bash
 docker stack rm student_app
