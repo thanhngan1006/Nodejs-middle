@@ -47,6 +47,19 @@
 > Ghi chú: Cấu trúc trên phản ánh các thư mục/chức năng chính trong hệ thống như hình đã gửi.
 
 ---
+## Luồng tổng quát hệ thống
+
+[React SPA] → [NGINX :80] → /api/*
+                       ├→ student-service :5000 (auth, teacher/student profile, CRUD sinh viên)
+                       ├→ grade-service   :5001 (điểm số, tính GPA, phát event gpa_updated)
+                       └→ notification-service (listen sự kiện student_created → gửi email)
+
+[grade-service] --publish-->  (queue gpa_updated)  --consume--> [student-service] (update GPA)
+[student-service] --publish-> (queue student_created) --consume-> [notification-service] (send email)
+[student-service, grade-service] ↔ [MongoDB]
+
+
+---
 
 ## ✅ Chuẩn bị
 
